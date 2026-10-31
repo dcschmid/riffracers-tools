@@ -2,7 +2,7 @@
 
 Zuerst die Welt mit `--world` oder `RIFF_WORLD_ROOT` auswählen und `world_create.py info` prüfen. Danach das Arbeitsrezept der gewählten Welt (`_project/WORKFLOW.md`) lesen.
 
-1. Streckenverlauf zuerst planen, bevor für eine Strecke ein einziges Bild entsteht: geschlossene Hauptrunde, Pitlane, **genau 2 Abkürzungen** und **genau 2 Risikosprünge** (Absprung, Flug, Landezone, sichere Alternativroute). Erst wenn `dev.py` die Geometrie fehlerfrei validiert hat, sind Blueprints, Pack und Bilder erlaubt.
+1. Streckenverlauf zuerst planen, bevor für eine Strecke ein einziges Bild entsteht: geschlossene Hauptrunde, Pitlane mit **12 Boxen** (Boxenstopps für 12 Carts), **genau 2 Abkürzungen** und **genau 2 Risikosprünge** (Absprung, Flug, Landezone, sichere Alternativroute). Erst wenn `dev.py` die Geometrie fehlerfrei validiert hat, sind Blueprints, Pack und Bilder erlaubt.
 2. Blueprints und Pack aus denselben Daten bauen (`run_stage.py`). Fehler in der Geometrie blockieren Pack und Blender-Ausgabe.
 3. Bilder über die gemeinsame Render-Pipeline erzeugen; Stil und spezielle Umgebung stammen aus der gewählten Welt.
 4. GPU-Jobs nacheinander ausführen; die CLI koordiniert Blender und MOSS über eine gemeinsame Sperre.

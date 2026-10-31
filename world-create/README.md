@@ -6,7 +6,7 @@ world-create ist ein eigenständiges Projekt unter `dev/github/riffracers-tools/
 
 ## Grundregel: erst Streckenverlauf, dann Bilder
 
-Bevor für eine Strecke ein einziges Bild entsteht, wird der Streckenverlauf geplant und datenbasiert validiert: geschlossene Hauptrunde, Pitlane, **genau 2 Abkürzungen** und **genau 2 Risikosprünge** (Absprung, Flug, Landezone, sichere Alternativroute). Erst wenn `dev.py` die Geometrie fehlerfrei validiert hat, sind Blueprints, Pack und Bilder erlaubt. Details: `WORKFLOW.md`.
+Bevor für eine Strecke ein einziges Bild entsteht, wird der Streckenverlauf geplant und datenbasiert validiert: geschlossene Hauptrunde, Pitlane mit **12 Boxen** (Boxenstopps für 12 Carts), **genau 2 Abkürzungen** und **genau 2 Risikosprünge** (Absprung, Flug, Landezone, sichere Alternativroute). Erst wenn `dev.py` die Geometrie fehlerfrei validiert hat, sind Blueprints, Pack und Bilder erlaubt. Details: `WORKFLOW.md`.
 
 ## Ablage
 
