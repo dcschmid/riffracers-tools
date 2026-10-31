@@ -1,0 +1,12 @@
+{
+  "schema": "riff-racers.world-project/1",
+  "id": "new-world",
+  "number": 3,
+  "name": "Name der neuen Welt",
+  "code_dir": "_project",
+  "cache_dir": "_project/out",
+  "grading": "grade.py",
+  "scripts": {},
+  "tracks": [],
+  "legacy_tracks": []
+}
