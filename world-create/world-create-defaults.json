@@ -1,5 +1,5 @@
 {
-  "default_world": "~/Pictures/AI-Generated/Riff-Racers/World-02-Electro-Groove",
+  "default_world": "~/Downloads/Worlds/World-02-Electro-Groove",
   "game_root": "~/dev/github/riff-racers",
   "tools": {
     "blender": "~/.local/bin/blender",
