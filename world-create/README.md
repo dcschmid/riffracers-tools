@@ -8,6 +8,10 @@ world-create ist ein eigenständiges Projekt unter `dev/github/riffracers-tools/
 
 Bevor für eine Strecke ein einziges Bild entsteht, wird der Streckenverlauf geplant und datenbasiert validiert: geschlossene Hauptrunde, Pitlane mit **12 Boxen** (Boxenstopps für 12 Carts), **genau 2 Abkürzungen** und **genau 2 Risikosprünge** (Absprung, Flug, Landezone, sichere Alternativroute). Erst wenn `dev.py` die Geometrie fehlerfrei validiert hat, sind Blueprints, Pack und Bilder erlaubt. Details: `WORKFLOW.md`.
 
+## Initiale Bilder: MOSS Low-Poly über local-image-ai-service
+
+Die initialen Bilder einer Strecke (Vogelperspektive, Umgebung, Boxen, Fallen, Publikum, Moodboard) entstehen grundsätzlich mit dem lokalen [`local-image-ai-service`](https://github.com/dcschmid/local-image-ai-service) über die `imgai`-CLI und dem **MOSS Low-Poly**-Modell — nicht mit einem anderen Anbieter. Die Pipeline ruft das über `w2lib/concepts.py` (`imgai generate -m moss`) und `w2lib/concepts_layout.py` (`imgai img2img -m moss`) auf; der Low-Poly-Stil ist dort fest verdrahtet. Der Werkzeugpfad kommt aus `tools.image_ai` in `world-create-defaults.json` (Standard `~/.local/bin/imgai`).
+
 ## Ablage
 
 ```text
