@@ -10,7 +10,12 @@ Bevor für eine Strecke ein einziges Bild entsteht, wird der Streckenverlauf gep
 
 ## Initiale Bilder: MOSS Low-Poly über local-image-ai-service
 
-Die initialen Bilder einer Strecke (Vogelperspektive, Umgebung, Boxen, Fallen, Publikum, Moodboard) entstehen grundsätzlich mit dem lokalen [`local-image-ai-service`](https://github.com/dcschmid/local-image-ai-service) über die `imgai`-CLI und dem **MOSS Low-Poly**-Modell — nicht mit einem anderen Anbieter. Die Pipeline ruft das über `w2lib/concepts.py` (`imgai generate -m moss`) und `w2lib/concepts_layout.py` (`imgai img2img -m moss`) auf; der Low-Poly-Stil ist dort fest verdrahtet. Der Werkzeugpfad kommt aus `tools.image_ai` in `world-create-defaults.json` (Standard `~/.local/bin/imgai`).
+Die initialen Bilder einer Strecke (Vogelperspektive, Umgebung, Boxen, Fallen, Publikum, Moodboard) entstehen grundsätzlich mit dem lokalen [`local-image-ai-service`](https://github.com/dcschmid/local-image-ai-service) und dem **MOSS Low-Poly**-Modell — nicht mit einem anderen Anbieter.
+
+- **Text-Concepts** (Umgebung/Vogelperspektive, Boxen, Props, Publikum, Moodboard-Kacheln) laufen über die JSON-CLI `local-image-ai-service render` (Free-Prompt, moss, 1024×576, 30–50 Steps) in `w2lib/concepts.py`.
+- **Layout-treue img2img-Repaints** der Blender-Renders laufen weiterhin über die niedrigstufige `imgai img2img`-CLI in `w2lib/concepts_layout.py`, weil das Service-Modell moss nur Text-zu-Bild unterstützt (`modes=['text']`).
+
+Die Werkzeugpfade kommen aus `tools.image_ai_service` und `tools.image_ai` in `world-create-defaults.json` (Standard `~/.local/bin/local-image-ai-service` bzw. `~/.local/bin/imgai`).
 
 ## Ablage
 

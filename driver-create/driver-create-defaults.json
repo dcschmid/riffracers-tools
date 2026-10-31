@@ -1,0 +1,10 @@
+{
+  "default_root": "~/Pictures/AI-Generated/drivers",
+  "tools": {
+    "image_ai": "~/.local/bin/imgai"
+  },
+  "model": "moss",
+  "preset": "balanced",
+  "max_rounds": 4,
+  "max_attempts": 6
+}

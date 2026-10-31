@@ -1,0 +1,14 @@
+{
+  "name": "New Driver",
+  "genre": "Music genre / cultural identity",
+  "type": "adult racing driver, short physical description",
+  "vibe": "two or three adjectives",
+  "colors": "name=#RRGGBB,name=#RRGGBB,name=#RRGGBB,name=#RRGGBB",
+  "outfit": "racing outfit: jacket, trousers, boots, panels, trim",
+  "accessories": "helmet, emblem, bands, gloves, belt",
+  "personality": "personality in a few words",
+  "proportions": "build and head count, e.g. 'strong and sturdy, 6.5 heads tall'",
+  "kart": "kart: stance, bodywork, panels, engine, exhaust, bumper, accents",
+  "seed": 4200,
+  "appearance": "hair, skin, visible face details"
+}

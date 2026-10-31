@@ -3,6 +3,7 @@
   "game_root": "~/dev/github/riff-racers",
   "tools": {
     "blender": "~/.local/bin/blender",
-    "image_ai": "~/.local/bin/imgai"
+    "image_ai": "~/.local/bin/imgai",
+    "image_ai_service": "~/.local/bin/local-image-ai-service"
   }
 }
