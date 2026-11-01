@@ -92,3 +92,28 @@ def coastal3(cen, nrm, world, rng):
     under = np.clip((-z - 0.2) / 3.0, 0, 1)
     col = _mix(col, _mix(H("#3fd2c4"), H("#168ab0"), under), np.clip((-z + 0.2) / 0.6, 0, 1) * 0.65)
     return np.clip(col * (1 + rng.uniform(-0.04, 0.04, (n, 1))), 0, 1)
+
+
+def iron_canyon(cen, nrm, world, rng):
+    """Metal world 'Iron Chorus': rust-red canyon. Packed rust-brown dirt on the flat arena floor, stacked rust/orange strata on slopes (terraced look by height bands),
+    dark basalt caps on the rim, near-black concert pit. Per-face jitter keeps the low-poly sparkle; roads stay the darkest, most uniform surface."""
+    z, slope = cen[:, 2], 1 - nrm[:, 2]
+    x, y = cen[:, 0], cen[:, 1]
+    n = len(z)
+    H = lambda c: np.tile(hx(c), (n, 1))
+    dirt_a, dirt_b = H("#946048"), H("#82533f")
+    pat = (np.sin(x * 0.043 + 1.1) * np.cos(y * 0.037) + rng.uniform(-0.5, 0.5, n)) > 0.1
+    col = _mix(dirt_a, dirt_b, pat.astype(float))
+    col = _mix(col, H("#b07a58"), np.clip(1 - np.abs(z - 0.2) / 1.2, 0, 1) * 0.30)               # lighter dust on the flat floor
+    trample = np.exp(-(((x) / 190.0) ** 2 + ((y - 150.0) / 120.0) ** 2))                           # trampled, lighter ground around the stage
+    col = _mix(col, H("#c28f68"), np.clip(trample * 1.2, 0, 1) * (z < 1.5) * 0.55)
+    strata = [H(c) for c in ("#a8472b", "#c9653a", "#8c3a28", "#d7864a", "#6e2e25")]
+    band = (np.floor(z / 3.2).astype(int) + (np.floor(x * 0.012 + y * 0.009)).astype(int)) % 5
+    rock = strata[0].copy()
+    for k in range(1, 5):
+        rock = np.where((band == k)[:, None], strata[k], rock)
+    rock = rock * (1 - 0.16 * np.clip(slope - 0.25, 0, 1))[:, None]
+    col = _mix(col, rock, np.clip((slope - 0.07) / 0.16, 0, 1))
+    col = _mix(col, _mix(col, H("#3a2c32"), np.clip((z - 30) / 14, 0, 1)), np.clip((z - 26) / 6, 0, 1) * 0.9)   # basalt caps on the rim
+    col = _mix(col, H("#2a1f26"), np.clip((-z - 0.5) / 1.5, 0, 1))                                     # concert pit
+    return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)

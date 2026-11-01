@@ -93,7 +93,7 @@ def run(track_folder, concepts, palette, title, subtitle, seed=2024):
     tmp = f"{base}/_tiles"
     ok = []
     for i, (name, prompt) in enumerate(concepts["tiles"].items()):
-        ok.append(gen(prompt, f"{tmp}/{name}.png", seed + i, 1024, 672, steps=30))
+        ok.append(gen(prompt, f"{tmp}/{name}.png", seed + i, 1024, 640, steps=30))
     moodboard([f"{tmp}/{n}.png" for n in concepts["tiles"]], palette, title, subtitle, f"{base}/moodboard.png")
     for k, fn in (("environment", "environment-concept.png"), ("pitlane", "pitlane-concept.png"), ("props", "signature-props.png")):
         ok.append(gen(concepts[k], f"{base}/{fn}", seed + 10 + len(ok), 1024, 576, steps=50))

@@ -361,8 +361,10 @@ def draw_pitlane(layout, path, W=2600, H=1000):
     wm = _sf_w(layout)
     sd = p["side"]
     dim(-150, 0, sd * (wm / 2), f"{wm:.0f} m")
-    dim(-150, sd * wm / 2, sd * (wm / 2 + 8), "8 m pit wall gap")
-    dim(-150, sd * (wm / 2 + 8), sd * (wm / 2 + 8 + 9), "9 m lane")
+    lane_w = float(next(e for e in layout["edges"] if e["id"] == "pit_lane")["widths"][0])
+    gap = abs(ly) - lane_w / 2 - wm / 2
+    dim(-150, sd * wm / 2, sd * (wm / 2 + gap), f"{gap:.0f} m pit wall gap")
+    dim(-150, sd * (wm / 2 + gap), sd * (wm / 2 + gap + lane_w), f"{lane_w:.0f} m lane")
     m.label([p["boxes"][0]["center"][0], p["boxes"][0]["center"][1]], "box pitch 13 m · garage 11 × 7.5 m", "#403d5c", size=14, pref=(-60, 80))
     m.label([p["lane_half"] - 30, ly], "pit lane limit 60 km/h · one way", "#3d78c4", size=15, pref=(60, 50))
     m.scale_bar(60, H - 60, 50)
