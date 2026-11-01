@@ -375,8 +375,8 @@ class Track:
         et = np.linspace(0, 1, n_ex)
         ex = np.column_stack([L1[0] + (B[0] - L1[0]) * et, L1[1] + (B[1] - L1[1]) * et, z_L1 + (zB - z_L1) * (3 * et ** 2 - 2 * et ** 3)])
         jid = d["id"]
-        nA = _node(f"n_{jid}_a", "jump_branch", A, zA, hu, ZONE_R)
-        nB = _node(f"n_{jid}_b", "jump_merge", B, zB, hu, 46.0)
+        nA = _node(f"n_{jid}_a", "jump_branch", A, zA, hu, float(d.get("zone_a", ZONE_R)))     # zone_a / zone_b: author-set connection zones (default 30 / 46 m)
+        nB = _node(f"n_{jid}_b", "jump_merge", B, zB, hu, float(d.get("zone_b", 46.0)))
         nn = {k: _node(f"{jid}_{k}", t_, p, z, hu, 1.0) for k, t_, p, z in (("ramp0", "jump_ramp_start", R0, z_R0), ("lip", "jump_takeoff", R1, z_lip),
                                                                              ("land0", "jump_landing_start", L0, z_L0), ("land1", "jump_landing_end", L1, z_L1))}
         nodes.update({n_["id"]: n_ for n_ in nn.values()})

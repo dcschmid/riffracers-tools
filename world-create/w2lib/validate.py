@@ -452,6 +452,37 @@ def _shortcut_check(L: Layout, t: dict):
                 "; ".join(rows) if not bad else "; ".join(bad), True, dict(rows=rows), model=True)
 
 
+MIN_JUMP_GAP = 3.0   # m edge-to-edge between jump road and main bypass at ramp start and at the end of the landing zone
+
+
+def _jump_bypass_gaps(L: Layout, t: dict, j: dict):
+    """Edge-to-edge gap between the jump road and the main-loop bypass at the ramp start and at the landing end; approach time at v_ref."""
+    from shapely.geometry import LineString, Point
+    E = L.E
+    loop = t["main_loop"]
+    ids, on = [], False
+    for k in loop + loop:
+        if not on and E[k]["from"] == j["fork_node"]:
+            on = True
+        if on:
+            ids.append(k)
+            if E[k]["to"] == j["merge_node"]:
+                break
+    if not ids or E[ids[-1]]["to"] != j["merge_node"]:
+        return None
+    byp = np.vstack([np.asarray(L.C[k])[:, :2] for k in ids])
+    bw = np.concatenate([np.asarray(E[k]["widths"], float) for k in ids])
+    line = LineString(byp)
+
+    def gap(edge_id, w_edge):
+        pt = np.asarray(L.C[edge_id])[-1][:2]
+        d = line.distance(Point(pt))
+        wb = float(bw[int(np.argmin(np.linalg.norm(byp - pt, axis=1)))])
+        return d - (w_edge + wb) / 2
+    jid = j["id"]
+    return dict(ramp=float(gap(f"{jid}_approach", j["width"])), landing=float(gap(f"{jid}_landing", j["width"] + 4)), approach_s=float(j["approach_len"] / max(j["ref_speed_mps"], 1.0)))
+
+
 def _jump_check(L: Layout, t: dict):
     bad, rows = [], []
     js = t["jumps"]
@@ -483,6 +514,16 @@ def _jump_check(L: Layout, t: dict):
         # safe alternative: the main loop between the nodes
         if f"{j['id']}_lap" not in t["routes"]:
             bad.append(f"{j['id']}: keine Alternativroute")
+        # the bypass must be a visibly separate road where the player has to decide (ramp start) and where the landing zone ends
+        sep = _jump_bypass_gaps(L, t, j)
+        if sep:
+            j["bypass_gap_ramp_m"], j["bypass_gap_landing_m"], j["approach_time_s"] = sep["ramp"], sep["landing"], sep["approach_s"]
+            if sep["ramp"] < MIN_JUMP_GAP:
+                bad.append(f"{j['id']}: Umfahrung am Rampenbeginn nur {sep['ramp']:.1f} m Kante-Kante < {MIN_JUMP_GAP:.0f} (Sprung und Umfahrung sind dort noch dieselbe Fahrbahn: Anlauf {j['approach_len']:.0f} m verlaengern)")
+            if sep["landing"] < MIN_JUMP_GAP:
+                bad.append(f"{j['id']}: Umfahrung am Landeende nur {sep['landing']:.1f} m Kante-Kante < {MIN_JUMP_GAP:.0f} (Auslauf {j['exit_len']:.0f} m verlaengern)")
+            if sep["approach_s"] < 1.0:
+                bad.append(f"{j['id']}: Anlauf {j['approach_len']:.0f} m = {sep['approach_s']:.2f} s bei v_ref < 1.0 s (zu spaete Entscheidung)")
         rows.append(f"{j['id']} '{j['name']}': Luecke {j['gap']:.0f} m, v_ref {j['ref_speed_mps']:.1f} m/s, Rampe {j['ramp_deg']} deg, benoetigt {lo_req * 100:.0f} % Tempo, "
                     f"Flugweite {j['flight_distance_range'][0]:.0f}-{j['flight_distance_range'][1]:.0f} m (nominal {j['nominal_flight_distance']:.0f}), Landezone {j['landing_len']:.0f} m, -{dt:.1f} s, sichere Route +{-j['saving_m']:.0f} m" if j["saving_m"] < 0 else
                     f"{j['id']} '{j['name']}': Luecke {j['gap']:.0f} m, v_ref {j['ref_speed_mps']:.1f} m/s, benoetigt {lo_req * 100:.0f} % Tempo, Flugweite {j['flight_distance_range'][0]:.0f}-{j['flight_distance_range'][1]:.0f} m, Landezone {j['landing_len']:.0f} m, -{dt:.1f} s, Hauptstrecke {j['main_span_len']:.0f} m vs Sprung {j['length']:.0f} m")
