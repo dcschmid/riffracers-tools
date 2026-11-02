@@ -49,7 +49,7 @@ def prep(src, dst, w=1024, h=576):
     return Image.open(dst)
 
 
-def repaint(init_path, prompt, out, seed, strengths=(0.5, 0.44, 0.38)):
+def repaint(init_path, prompt, out, seed, strengths=(0.5, 0.44, 0.38, 0.32)):
     best = None
     init = Image.open(init_path)
     e0 = edges(init)
