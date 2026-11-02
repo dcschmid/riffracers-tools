@@ -222,8 +222,26 @@ class World:
 
     # ---- barrier masks (where a road edge gets a guard wall)
     def barrier_masks(self):
+        """Per edge and side: where the barrier / kerb / edge line may be drawn (True). A side is switched off where it lies inside (or within 3.2 m of) ANOTHER road, i.e. on
+        the inner side facing a sister branch at a fork or merge. Edges that simply continue each other (flow-through at a shared node with the same heading, e.g. main -> main
+        or approach -> ramp) do not mask each other, so the outer barrier runs through every node without gaps."""
+        import math
         out = {}
-        nodes = {n["id"]: n for n in self.t["nodes"]}
+        E = {e["id"]: e for e in self.t["edges"]}
+
+        def hdg(e, at_end):
+            c = np.array(e["centerline"])[:, :2]
+            v = (c[-1] - c[max(len(c) - 4, 0)]) if at_end else (c[min(3, len(c) - 1)] - c[0])
+            return math.atan2(v[1], v[0])
+
+        def continues(e, f):
+            if e["to"] == f["from"]:
+                a_, b_ = hdg(e, True), hdg(f, False)
+            elif e["from"] == f["to"]:
+                a_, b_ = hdg(f, True), hdg(e, False)
+            else:
+                return False
+            return abs((a_ - b_ + math.pi) % (2 * math.pi) - math.pi) < math.radians(15)
         for e in self.t["edges"]:
             if not e.get("polygon", True):
                 continue
@@ -231,22 +249,12 @@ class World:
             w = np.array(e["widths"])
             h = G.headings(c[:, :2])
             nrm = np.column_stack([-h[:, 1], h[:, 0]])
-            others = unary_union([p for k, p in self.roads.items() if k != e["id"]]).buffer(3.2)
+            others = unary_union([p for k, p in self.roads.items() if k != e["id"] and not continues(e, E[k])]).buffer(3.2)
             res = {}
             for side, nm in ((1, "l"), (-1, "r")):
                 pp = c[:, :2] + nrm * (w / 2 + 1.0)[:, None] * side
                 pts = shapely.points(pp[:, 0], pp[:, 1])
-                inside_other = shapely.contains(others, pts)
-                m = ~inside_other
-                for nid in (e["from"], e["to"]):
-                    nd = nodes[nid]
-                    if nd["type"] in ("jump_ramp_start", "jump_takeoff", "jump_landing_start", "jump_landing_end"):
-                        continue
-                    near = np.linalg.norm(pp - np.array(nd["xy"]), axis=1) < 16.0 if nd["type"] in ("shortcut_fork", "shortcut_merge", "jump_branch", "jump_merge", "pit_entry", "pit_exit") else np.zeros(len(pp), bool)
-                    m &= ~near
-                if e["kind"] in ("jump_ramp", "jump_landing", "jump_approach", "jump_exit"):
-                    m &= True
-                res[nm] = m.tolist()
+                res[nm] = (~shapely.contains(others, pts)).tolist()
             cp = shapely.points(c[:, 0], c[:, 1])
             res["pil"] = (~shapely.contains(others.buffer(2.0), cp)).tolist()
             out[e["id"]] = res

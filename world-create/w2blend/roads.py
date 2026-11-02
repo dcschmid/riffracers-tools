@@ -89,14 +89,31 @@ def build_roads(lay, masks, Hfn, th, B, rng):
                     if th.get("zone_glow") and zn["kind"] in th["zone_glow"]:
                         for sd in (-1, 1):
                             strip_between(c[ii], nrm[ii], sd * (w[ii] / 2 - 1.4), sd * (w[ii] / 2 - 1.0), 0.05, th["zone_glow"][zn["kind"]], B["emit"])
-        # lane markings
+        # lane markings (edge lines only where the barrier mask allows it: no white lines inside the paved area of a fork / merge; centre dashes only where the centre line is free)
         line = th["line"]
         if kind in ("main", "jump_approach", "jump_exit"):
-            strip_between(c, nrm, -w / 2 + 0.55, -w / 2 + 0.9, 0.035, line, B["road"])
-            strip_between(c, nrm, w / 2 - 0.9, w / 2 - 0.55, 0.035, line, B["road"])
+            mk0 = masks.get(e["id"], {})
+            ml0, mr0, mp0 = np.array(mk0.get("l", [True] * n)), np.array(mk0.get("r", [True] * n)), np.array(mk0.get("pil", [True] * n))
+
+            def _runs(m):
+                i = 0
+                while i < n:
+                    if m[i]:
+                        j = i
+                        while j + 1 < n and m[j + 1]:
+                            j += 1
+                        if j > i:
+                            yield i, j + 1
+                        i = j + 1
+                    else:
+                        i += 1
+            for a_, b_ in _runs(mr0):
+                strip_between(c[a_:b_], nrm[a_:b_], -w[a_:b_] / 2 + 0.55, -w[a_:b_] / 2 + 0.9, 0.035, line, B["road"])
+            for a_, b_ in _runs(ml0):
+                strip_between(c[a_:b_], nrm[a_:b_], w[a_:b_] / 2 - 0.9, w[a_:b_] / 2 - 0.55, 0.035, line, B["road"])
             for i in range(0, n - 4, 6):
                 sl = slice(i, i + 3)
-                if len(c[sl]) > 1:
+                if len(c[sl]) > 1 and mp0[sl].all():
                     cc, nn = c[sl], nrm[sl]
                     strip_between(cc, nn, -0.15, 0.15, 0.036, th["line_center"], B["road"])
         elif kind in ("pit_lane", "pit_entry", "pit_exit"):
