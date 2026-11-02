@@ -117,3 +117,34 @@ def iron_canyon(cen, nrm, world, rng):
     col = _mix(col, _mix(col, H("#3a2c32"), np.clip((z - 30) / 14, 0, 1)), np.clip((z - 26) / 6, 0, 1) * 0.9)   # basalt caps on the rim
     col = _mix(col, H("#2a1f26"), np.clip((-z - 0.5) / 1.5, 0, 1))                                     # concert pit
     return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
+
+
+def razor_yard(cen, nrm, world, rng):
+    """Metal world 'Razorline Riot': a working scrapyard floor. Packed rust-brown dirt and mud as the base, large worn concrete pads only in patches, black oil stains, rust-orange
+    streaks, gravel speckle, dark grey rock on the ridges. Per-face jitter keeps the low-poly sparkle; roads stay the darkest, most uniform surface."""
+    z, slope = cen[:, 2], 1 - nrm[:, 2]
+    x, y = cen[:, 0], cen[:, 1]
+    n = len(z)
+    H = lambda c: np.tile(hx(c), (n, 1))
+    pat = (np.sin(x * 0.041 + 0.7) * np.cos(y * 0.037) + rng.uniform(-0.55, 0.55, n)) > 0.05
+    col = _mix(H("#76624f"), H("#685645"), pat.astype(float))                                          # packed dirt
+    mud = np.sin(x * 0.011 + 1.0) * np.cos(y * 0.009) + 0.5 * np.sin(x * 0.027 + y * 0.021)
+    col = _mix(col, H("#54443a"), np.clip(mud * 0.9, 0, 1) * (slope < 0.3))                              # mud
+    slab = ((np.floor(x / 48.0).astype(int) + np.floor(y / 36.0).astype(int)) % 3 == 0) & (np.sin(x * 0.006 + y * 0.0045) > -0.1)
+    col = np.where(slab[:, None] & (slope < 0.2)[:, None], _mix(H("#74767a"), H("#6c6e72"), pat.astype(float)), col)   # worn concrete pads
+    rust = np.sin(x * 0.019 - y * 0.015 + 2.0) + 0.6 * np.sin(x * 0.041 + y * 0.037)
+    col = _mix(col, H("#7a4a32"), np.clip((rust - 0.55) * 1.2, 0, 1) * 0.6 * (slope < 0.3))              # rust streaks
+    oil = (np.sin(x * 0.13 + y * 0.09) * np.cos(y * 0.11 + 0.5) > 0.74)
+    col = np.where(oil[:, None] & (slope < 0.2)[:, None], col * 0.62, col)                                 # oil stains
+    col = _mix(col, H("#6a5a4c"), (rng.uniform(0, 1, n) > 0.93).astype(float) * 0.5)                      # gravel speckle
+    strata = [H(c) for c in ("#6b6460", "#57514e", "#7a6a60", "#4a4644", "#6f6258")]
+    band = (np.floor(z / 3.0).astype(int) + (np.floor(x * 0.013 + y * 0.01)).astype(int)) % 5
+    rock = strata[0].copy()
+    for k in range(1, 5):
+        rock = np.where((band == k)[:, None], strata[k], rock)
+    rock = rock * (1 - 0.14 * np.clip(slope - 0.25, 0, 1))[:, None]
+    col = _mix(col, rock, np.clip((slope - 0.07) / 0.16, 0, 1))
+    col = _mix(col, H("#46403c"), np.clip((z - 26.0) / 10.0, 0, 1))                                      # dark plateau on the rim
+    col = _mix(col, H("#34302c"), np.clip((slope - 0.55) / 0.25, 0, 1))                                   # (near-)vertical faces stay dark
+    col = _mix(col, H("#2a2826"), np.clip((-z - 0.5) / 1.5, 0, 1))                                        # scrap press / container gap
+    return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)

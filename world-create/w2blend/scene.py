@@ -151,7 +151,7 @@ def main():
             fz += float(th.get("far_ring_dz", 0.0))
             for (a0, b0, a1, b1) in rects:
                 qv = np.array([[a0, b0, fz], [a1, b0, fz], [a1, b1, fz], [a0, b1, fz]])
-                B["solid"].add(qv, [[0, 1, 2], [0, 2, 3]], hx(th["far_sea"]))
+                B[th.get("far_batch", "solid")].add(qv, [[0, 1, 2], [0, 2, 3]], hx(th["far_sea"]))      # far_batch="terrain": matte plateau instead of a glossy plane
         elif th.get("far_grad"):
             if not os.environ.get("W2_NOFAR"):
                 far_sea_grad(B, bb, fz, th, z["wV"])
