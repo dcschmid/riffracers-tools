@@ -115,7 +115,7 @@ def run(mod_name, folder):
     for key, prompt, out, seed in jobs:
         init = f"{tmp}/init_{key}.png"
         prep(str(sources[key]), init)
-        r = repaint(init, prompt, out, seed + (7 if key == "trap" else 0))
+        r = repaint(init, prompt, out, seed + (7 if key == "trap" else 0) + int(getattr(m, "MOSS_SEED_OFFSET", 0)))
         res[key] = dict(source=str(sources[key].relative_to(track_dir)), strength=r[0], layout_correlation=round(r[1], 3), output=os.path.relpath(out, d))
     concepts.moodboard([f"{cdir}/environment-concept.png", crowd, f"{cdir}/signature-props.png", f"{cdir}/pitlane-concept.png"], m.PALETTE, m.TITLE,
                        m.SUBTITLE + "  ·  repainted from the validated layout", f"{cdir}/moodboard.png", labels=["track overview (layout-faithful)", "start straight & crowd", "signature trap in place", "pit lane"])

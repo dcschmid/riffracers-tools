@@ -56,6 +56,7 @@ class World:
         self.water = [Polygon(a["poly"]) for a in layout.get("areas", []) if a["kind"] == "water"]
         self.sunken = [Polygon(a["poly"]) for a in layout.get("areas", []) if a["kind"] in ("sunken", "trench", "pit")]
         self.raised = [(a.get("h", 6.0), Polygon(a["poly"]), a.get("ramp", 14.0)) for a in layout.get("areas", []) if a["kind"] in ("rocks", "hill")]
+        self.cliffs = [(a.get("depth", 60.0), Polygon(a["poly"]), a.get("ramp", 24.0)) for a in layout.get("areas", []) if a["kind"] == "cliff"]
         self.water_union = unary_union(self.water) if self.water else Polygon()
         self.land = None
         if self.style == "island":
@@ -142,6 +143,10 @@ class World:
             dist = shapely.distance(poly.boundary, pts_s)
             lift = hh * smoothstep(dist / ramp) * (0.85 + 0.3 * base_n2)
             h = np.where(inside & (d > shoulder + 6.0), h + lift, h)
+        for dep, poly, ramp in self.cliffs:                                  # steep drop (cliff / abyss) outside a road shoulder
+            inside = shapely.contains(poly, pts_s)
+            dist = shapely.distance(poly.boundary, pts_s)
+            h = np.where(inside & (d > shoulder + 2.0), h - dep * smoothstep(dist / ramp), h)
         for w in self.water:
             inside = shapely.contains(w, pts_s)
             dist = shapely.distance(w.boundary, pts_s)

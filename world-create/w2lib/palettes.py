@@ -148,3 +148,34 @@ def razor_yard(cen, nrm, world, rng):
     col = _mix(col, H("#34302c"), np.clip((slope - 0.55) / 0.25, 0, 1))                                   # (near-)vertical faces stay dark
     col = _mix(col, H("#2a2826"), np.clip((-z - 0.5) / 1.5, 0, 1))                                        # scrap press / container gap
     return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
+
+
+def cathedral_rock(cen, nrm, world, rng):
+    """Metal world 'Into the Cathedral': a mountain shelf of dark flagstone. Slate and basalt grey with cold violet tint, moss-green patches in the lee, pale rock faces on the
+    slopes, cold blue-grey in the abyss; roads stay the darkest, most uniform surface."""
+    z, slope = cen[:, 2], 1 - nrm[:, 2]
+    x, y = cen[:, 0], cen[:, 1]
+    n = len(z)
+    H = lambda c: np.tile(hx(c), (n, 1))
+    pat = (np.sin(x * 0.037 + 0.4) * np.cos(y * 0.033) + rng.uniform(-0.55, 0.55, n)) > 0.05
+    col = _mix(H("#5a5864"), H("#4d4b58"), pat.astype(float))                                           # dark flagstone ground
+    slab = ((np.floor(x / 30.0).astype(int) + np.floor(y / 22.0).astype(int)) % 3 == 0) & (np.sin(x * 0.007 + y * 0.005) > -0.2)
+    col = np.where(slab[:, None] & (slope < 0.2)[:, None], _mix(H("#6c6a78"), H("#615f6d"), pat.astype(float)), col)   # paler cut-stone pads
+    plaza = (x > -60) & (x < 340) & (y > 8) & (y < 215) & (slope < 0.15)                                  # forecourt: pale flagstones in a grid in front of the stage
+    tile = ((np.floor(x / 7.0).astype(int) + np.floor(y / 7.0).astype(int)) % 2 == 0)
+    col = np.where(plaza[:, None], np.where(tile[:, None], H("#7a7886"), H("#6e6c7a")), col)
+    moss = np.sin(x * 0.015 + 1.0) * np.cos(y * 0.013 - 0.7) + 0.5 * np.sin(x * 0.033 + y * 0.029)
+    col = _mix(col, H("#3f4a3e"), np.clip((moss - 0.4) * 1.1, 0, 1) * 0.55 * (slope < 0.3))              # moss
+    strata = [H(c) for c in ("#6a6870", "#55535d", "#7a7680", "#47454e", "#625f68")]
+    band = (np.floor(z / 4.0).astype(int) + (np.floor(x * 0.011 + y * 0.009)).astype(int)) % 5
+    rock = strata[0].copy()
+    for k in range(1, 5):
+        rock = np.where((band == k)[:, None], strata[k], rock)
+    rock = rock * (1 - 0.16 * np.clip(slope - 0.25, 0, 1))[:, None]
+    col = _mix(col, rock, np.clip((slope - 0.07) / 0.16, 0, 1))
+    col = _mix(col, H("#8a8896"), np.clip((z - 70.0) / 40.0, 0, 1))                                      # pale high rock
+    col = _mix(col, H("#2c2a32"), np.clip((slope - 0.55) / 0.25, 0, 1))                                  # (near-)vertical faces stay dark
+    cl = (np.sin(x * 0.011 + 1.0) * np.cos(y * 0.009) + 0.5 * np.sin(x * 0.027 + y * 0.021) + rng.uniform(-0.35, 0.35, n))
+    cloud = _mix(H("#cdb0cc"), H("#e6c8cf"), (cl > 0.2).astype(float))
+    col = _mix(col, cloud, np.clip((-z - 12.0) / 14.0, 0, 1))                                            # the abyss is a sea of cloud (lavender and rose)
+    return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
