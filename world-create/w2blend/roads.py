@@ -156,8 +156,9 @@ def build_roads(lay, masks, Hfn, th, B, rng):
                 for side in (1, -1):
                     p0 = c[i].copy(); p0[:2] += nrm[i] * side * w[i] / 2
                     p1 = c[i + 1].copy(); p1[:2] += nrm[i + 1] * side * w[i + 1] / 2
-                    depth0 = (g0 + 0.5) if ramp_like else min(1.1, g0 + 0.3)
-                    depth1 = (g1 + 0.5) if ramp_like else min(1.1, g1 + 0.3)
+                    cap_ = 2.4 if th.get("no_pillars") else 1e9                 # worlds with their own supports (trestles) get a thin skirt instead of a tall retaining slab
+                    depth0 = min(g0 + 0.5, cap_) if ramp_like else min(1.1, g0 + 0.3)
+                    depth1 = min(g1 + 0.5, cap_) if ramp_like else min(1.1, g1 + 0.3)
                     V = np.array([p0, p1, p1 - [0, 0, depth1], p0 - [0, 0, depth0]])
                     B["solid"].add(V, tri_quads([[0, 1, 2, 3]]) if side > 0 else tri_quads([[3, 2, 1, 0]]), th["deck_side"] if not ramp_like else th["ramp_side"])
                 if not ramp_like and gapz[i] > 1.2:
@@ -166,7 +167,7 @@ def build_roads(lay, masks, Hfn, th, B, rng):
                     b_ = offset(c[i:i + 2], nrm[i:i + 2], w[i:i + 2] / 2, -1.1)
                     V, F = strip(a_, b_)
                     B["solid"].add(V, F[:, ::-1], th["deck_side"] * 0.7)
-            if not ramp_like:
+            if not ramp_like and not th.get("no_pillars"):                 # a world module that builds its own supports (trestles, piers) sets no_pillars
                 pil_ok = mk.get("pil", [True] * n)
                 step = 8
                 for i in range(2, n - 2, step):

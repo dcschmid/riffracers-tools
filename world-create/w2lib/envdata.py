@@ -41,6 +41,11 @@ def edge_poly(e):
     return G.var_strip(c[:, :2], np.array(e["widths"]))
 
 
+def _area_poly(a):
+    """Polygon of a terrain area; optional `holes` (list of coordinate lists) cut islands out of it (e.g. the abyss around the mountain)."""
+    return Polygon(a["poly"], a.get("holes") or None)
+
+
 class World:
     """Everything the environment builders need to know about the ground."""
 
@@ -53,10 +58,11 @@ class World:
         self.cell = ter.get("cell", 7.0)
         self.roads = {e["id"]: edge_poly(e) for e in layout["edges"] if e.get("polygon", True)}
         self.road_union = unary_union(list(self.roads.values()))
-        self.water = [Polygon(a["poly"]) for a in layout.get("areas", []) if a["kind"] == "water"]
-        self.sunken = [Polygon(a["poly"]) for a in layout.get("areas", []) if a["kind"] in ("sunken", "trench", "pit")]
-        self.raised = [(a.get("h", 6.0), Polygon(a["poly"]), a.get("ramp", 14.0)) for a in layout.get("areas", []) if a["kind"] in ("rocks", "hill")]
-        self.cliffs = [(a.get("depth", 60.0), Polygon(a["poly"]), a.get("ramp", 24.0)) for a in layout.get("areas", []) if a["kind"] == "cliff"]
+        self.water = [_area_poly(a) for a in layout.get("areas", []) if a["kind"] == "water"]
+        self.sunken = [_area_poly(a) for a in layout.get("areas", []) if a["kind"] in ("sunken", "trench", "pit")]
+        self.raised = [(a.get("h", 6.0), _area_poly(a), a.get("ramp", 14.0)) for a in layout.get("areas", []) if a["kind"] in ("rocks", "hill")]
+        self.cliffs = [(a.get("depth", 60.0), _area_poly(a), a.get("ramp", 24.0)) for a in layout.get("areas", []) if a["kind"] == "cliff"]
+        self.plateaus = [(a.get("z", 0.0), _area_poly(a), a.get("ramp", 40.0)) for a in layout.get("areas", []) if a["kind"] == "plateau"]
         self.water_union = unary_union(self.water) if self.water else Polygon()
         self.land = None
         if self.style == "island":
@@ -130,6 +136,20 @@ class World:
             base = np.where(inland, h_land, h_sea)
         else:
             base = self.cfg.get("ground_z", 0.0) + amp * 0.12 * base_n2 * self.cfg.get("rough", 0.0)
+            mas = self.cfg.get("massif")
+            if mas:                                                          # mountain mass that follows the heights of the (non-elevated) roads: no canyons between spiral levels
+                sg = float(mas.get("sigma", 150.0))
+                step = max(1, int(len(sp) // 2500))
+                qp, qz = sp[::step], sz[::step]
+                num = np.zeros(len(P)); den = np.zeros(len(P))
+                for i in range(0, len(P), 1500):
+                    dd = ((P[i:i + 1500, None, :] - qp[None, :, :]) ** 2).sum(-1)
+                    w_ = np.exp(-dd / (2.0 * sg * sg))
+                    num[i:i + 1500] = (w_ * qz[None, :]).sum(1)
+                    den[i:i + 1500] = w_.sum(1)
+                w0 = float(mas.get("w0", 0.02))
+                lift = (num / (den + 1e-9)) * (den / (den + w0)) + float(mas.get("offset", -1.0))
+                base = base + np.maximum(lift, 0.0)
         # carve road corridor: flat shoulder, then falloff
         shoulder = hw + self.cfg.get("shoulder", 5.0)
         fall = self.cfg.get("falloff", 38.0)
@@ -147,6 +167,11 @@ class World:
             inside = shapely.contains(poly, pts_s)
             dist = shapely.distance(poly.boundary, pts_s)
             h = np.where(inside & (d > shoulder + 2.0), h - dep * smoothstep(dist / ramp), h)
+        for z0, poly, ramp in self.plateaus:                                 # levelled terrace at height z0 (forge yard, summit), blended in over `ramp` m inside the polygon; applied after the cliffs so that a terrace stays level
+            inside = shapely.contains(poly, pts_s)
+            dist = shapely.distance(poly.boundary, pts_s)
+            tt = smoothstep(dist / ramp)
+            h = np.where(inside & (d > shoulder + 2.0), h * (1 - tt) + z0 * tt, h)
         for w in self.water:
             inside = shapely.contains(w, pts_s)
             dist = shapely.distance(w.boundary, pts_s)
@@ -226,6 +251,19 @@ class World:
         return V, F[keep], col[keep]
 
     # ---- barrier masks (where a road edge gets a guard wall)
+    @staticmethod
+    def _same_level(c, ck, m_, dz_max=4.5):
+        """Per sample of centreline c (flagged in m_): True if the other road (centreline ck) is within dz_max in height at its nearest point; a bridge crossing 6+ m above or below a
+        road does not switch that road's barriers off."""
+        res = np.zeros(len(c), bool)
+        idx = np.nonzero(m_)[0]
+        if len(idx) == 0:
+            return res
+        d = np.hypot(c[idx, None, 0] - ck[None, :, 0], c[idx, None, 1] - ck[None, :, 1])
+        j = d.argmin(1)
+        res[idx] = np.abs(c[idx, 2] - ck[j, 2]) <= dz_max
+        return res
+
     def barrier_masks(self):
         """Per edge and side: where the barrier / kerb / edge line may be drawn (True). A side is switched off where it lies inside (or within 3.2 m of) ANOTHER road, i.e. on
         the inner side facing a sister branch at a fork or merge. Edges that simply continue each other (flow-through at a shared node with the same heading, e.g. main -> main
@@ -254,14 +292,24 @@ class World:
             w = np.array(e["widths"])
             h = G.headings(c[:, :2])
             nrm = np.column_stack([-h[:, 1], h[:, 0]])
-            others = unary_union([p for k, p in self.roads.items() if k != e["id"] and not continues(e, E[k])]).buffer(3.2)
             res = {}
-            for side, nm in ((1, "l"), (-1, "r")):
-                pp = c[:, :2] + nrm * (w / 2 + 1.0)[:, None] * side
-                pts = shapely.points(pp[:, 0], pp[:, 1])
-                res[nm] = (~shapely.contains(others, pts)).tolist()
             cp = shapely.points(c[:, 0], c[:, 1])
-            res["pil"] = (~shapely.contains(others.buffer(2.0), cp)).tolist()
+            hit = {"l": np.zeros(len(c), bool), "r": np.zeros(len(c), bool), "pil": np.zeros(len(c), bool)}
+            for k, pk in self.roads.items():
+                if k == e["id"] or continues(e, E[k]):
+                    continue
+                other = pk.buffer(3.2)
+                ck = np.array(E[k]["centerline"])
+                for side, nm in ((1, "l"), (-1, "r")):
+                    pp = c[:, :2] + nrm * (w / 2 + 1.0)[:, None] * side
+                    m_ = shapely.contains(other, shapely.points(pp[:, 0], pp[:, 1]))
+                    if m_.any():
+                        hit[nm] |= m_ & self._same_level(c, ck, m_)
+                m_ = shapely.contains(other.buffer(2.0), cp)
+                if m_.any():
+                    hit["pil"] |= m_ & self._same_level(c, ck, m_)
+            for nm in ("l", "r", "pil"):
+                res[nm] = (~hit[nm]).tolist()
             out[e["id"]] = res
         return out
 

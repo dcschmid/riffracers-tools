@@ -179,3 +179,33 @@ def cathedral_rock(cen, nrm, world, rng):
     cloud = _mix(H("#cdb0cc"), H("#e6c8cf"), (cl > 0.2).astype(float))
     col = _mix(col, cloud, np.clip((-z - 12.0) / 14.0, 0, 1))                                            # the abyss is a sea of cloud (lavender and rose)
     return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
+
+
+def thunder_rock(cen, nrm, world, rng):
+    """Metal world 'Thunderforge': a stormy mountain of black basalt. Cinder-dark ground in the forge yard with warm ash, steel-blue basalt with rust strata on the slopes, wet
+    black faces, scree and frost on the high shelves, cold storm cloud in the gorges; roads stay the darkest, most uniform surface."""
+    z, slope = cen[:, 2], 1 - nrm[:, 2]
+    x, y = cen[:, 0], cen[:, 1]
+    n = len(z)
+    H = lambda c: np.tile(hx(c), (n, 1))
+    pat = (np.sin(x * 0.041 + 0.2) * np.cos(y * 0.036) + rng.uniform(-0.55, 0.55, n)) > 0.05
+    col = _mix(H("#383844"), H("#31313d"), pat.astype(float))                                           # dark basalt ground
+    ash = np.clip((np.sin(x * 0.013 - 0.4) * np.cos(y * 0.011 + 0.9) + 0.35) * 0.9, 0, 1)
+    col = _mix(col, H("#5b4c46"), ash * 0.5 * (slope < 0.2) * np.clip((60.0 - z) / 60.0, 0, 1))         # warm ash and cinder in the lower yard
+    yard = (x > -40) & (x < 380) & (y > -260) & (y < 12) & (slope < 0.2)
+    tile = ((np.floor(x / 8.0).astype(int) + np.floor(y / 8.0).astype(int)) % 2 == 0)
+    col = np.where(yard[:, None], np.where(tile[:, None], H("#5a5560"), H("#504c58")), col)             # slag plates of the forge yard
+    strata = [H(c) for c in ("#434656", "#33353f", "#524940", "#2c2e3a", "#3c3f4e")]
+    band = (np.floor(z / 3.5).astype(int) + (np.floor(x * 0.012 + y * 0.010)).astype(int)) % 5
+    rock = strata[0].copy()
+    for k in range(1, 5):
+        rock = np.where((band == k)[:, None], strata[k], rock)
+    rock = rock * (1 - 0.18 * np.clip(slope - 0.25, 0, 1))[:, None]
+    col = _mix(col, rock, np.clip((slope - 0.06) / 0.14, 0, 1))
+    frost = np.clip((z - 78.0) / 36.0, 0, 1) * np.clip(0.55 + 0.45 * np.sin(x * 0.02 + y * 0.015), 0, 1)
+    col = _mix(col, H("#9aa4b8"), frost * (slope < 0.45))                                                 # frost and snow on the high shelves
+    col = _mix(col, H("#23242e"), np.clip((slope - 0.5) / 0.25, 0, 1))                                    # wet black faces
+    cl = (np.sin(x * 0.011 + 1.0) * np.cos(y * 0.009) + 0.5 * np.sin(x * 0.027 + y * 0.021) + rng.uniform(-0.35, 0.35, n))
+    cloud = _mix(H("#5a6288"), H("#6c76a0"), (cl > 0.2).astype(float))
+    col = _mix(col, cloud, np.clip((-z - 40.0) / 40.0, 0, 1))                                            # the abyss is a sea of storm cloud
+    return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
