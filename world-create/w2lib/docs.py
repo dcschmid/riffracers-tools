@@ -74,6 +74,24 @@ def gameplay_md(lay, doc, val):
               f"- **Varianten:** easy (Zyklus ×{tr['variants']['easy']['cycle_scale']}, Baender ×{tr['variants']['easy']['band_scale']}) Korridor {e['min_corridor_m']:.1f} m · normal {n['min_corridor_m']:.1f} m · hard (Zyklus ×{tr['variants']['hard']['cycle_scale']}, Baender ×{tr['variants']['hard']['band_scale']}) {h['min_corridor_m']:.1f} m",
               f"- **Fairness-Modell:** {n['paths_tested']} Durchfahrtstests ueber Phase × Tempo, {n['paths_failed']} Fehlpfade, Aktivzeit {n['max_duty'] * 100:.0f} %; bei 12 Karts bleibt der Korridor dauerhaft frei (>= {n['min_corridor_m']:.1f} m).",
               f"- **KI-Navigation:** {tr['ai']}", ""]
+        if tr.get("states"):
+            stt = tr["states"]
+            L += [f"- **Zustandsautomat:** {stt['machine']}" + (f" (Zyklus {stt['cycle_s']} s, Beruhigung {stt['recover_s']} s)" if "cycle_s" in stt else ""),
+                  f"- **Warnung:** {stt.get('warning_s', 0)} s bei {stt.get('approach_speed_mps', 0)} m/s = {stt.get('warning_distance_needed_m', 0)} m noetig, sichtbar ab {stt['warning_visible_from_m']:.0f} m ({'ok' if stt.get('warning_distance_ok', True) else 'zu kurz'}); rein zeitgesteuert, kein Zufall, kein Audio",
+                  f"- **Sichere Linie in jeder Phase:** {stt['safe_line_every_phase']}"]
+            if "bands" in stt:
+                b0 = next(iter(stt["bands"].values()))
+                L += ["- **Zeitplan eines Bandes:** " + " -> ".join(f"{r['state']} {r['duration_s']} s" for r in b0)]
+        if tr.get("weather_variants"):
+            L += ["- **Wettervarianten:** " + "; ".join(f"{w['weather']}: {w['visual']} ({w['gameplay']})" for w in tr["weather_variants"]), ""]
+    dp = lay.get("difficulty_plan")
+    if dp:
+        L += ["## Schwierigkeitsplanung (12 Karts, Plan - nicht im Spiel)", "", "| Modus | Runden | Variante | Warnphase | Zyklus | Baender | aktive Stationen | gleichzeitig heisse Zonen | KI-Mix (vorsichtig/ausgewogen/aggressiv) |", "|---|---:|---|---:|---:|---:|---|---:|---|"]
+        for m_ in dp["modes"]:
+            h0 = next(iter(m_["hazards"].values()))
+            L.append(f"| {m_['name']} | {m_['laps']} | {m_['variant_ref']} | x{h0['warning_scale']} | x{h0['cycle_scale']} | x{h0['band_scale']} | {m_['hazard_hits_per_lap_model']} | {m_['max_zones_hot_at_once']} | {m_['ai_mix']['cautious']}/{m_['ai_mix']['balanced']}/{m_['ai_mix']['aggressive']} |")
+        L += ["", "Notiz je Modus: " + "; ".join(f"**{m_['name']}**: {m_['note']}" for m_ in dp["modes"]), "", "**KI-Risikoprofile:** " + "; ".join(f"**{k}** (Abstand {v['margin_m']} m, Reaktion {v['reaction_s']} s, Abkuerzung {int(v['shortcut'] * 100)} %, Sprung {int(v['jump'] * 100)} %): {v['note']}" for k, v in dp["ai_profiles"].items()), "",
+              f"Abstand der Fallenzonen entlang der Runde (m): {dp['trap_zone_gaps_m']}.", ""] + [f"- {r}" for r in dp["rules"]] + [""]
     L += ["## Ueberholmoeglichkeiten", ""] + [f"- s = {o['s']:.0f} m: {o['v_in']:.0f}→{o['v_out']:.0f} m/s, {o['width']:.0f} m breit, Bremsweg {o['braking_len']:.0f} m" for o in lay["overtaking"]]
     p = lay["pit"]
     L += ["", "## Pitlane", "", f"- 12 Boxen, Raster {p['box_spacing']} m, Gasse {2 * p['lane_half']:.0f} m, Einfahrt s = {p['entry_s']:.0f} m (vor S/Z), Ausfahrt s = {p['exit_s']:.0f} m (hinter S/Z), 60 km/h, Einbahn",

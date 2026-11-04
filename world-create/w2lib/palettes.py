@@ -209,3 +209,51 @@ def thunder_rock(cen, nrm, world, rng):
     cloud = _mix(H("#5a6288"), H("#6c76a0"), (cl > 0.2).astype(float))
     col = _mix(col, cloud, np.clip((-z - 40.0) / 40.0, 0, 1))                                            # the abyss is a sea of storm cloud
     return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)
+
+
+def frostfire_rock(cen, nrm, world, rng):
+    """Metal world 'Frostfire Run': two mountain regions in one palette. East of the bridge (x > -400) frozen ice pass: snow fields with blue glacier patches, slate-blue rock faces with
+    pale strata, wet gravel and concrete plates around the thermal harbour. West of it (x < -480) the volcanic cauldron: black ash and basalt with rust strata, ember-red fissure patches
+    and a dull red crater floor. The transition ('frostfire line') is ragged across the bridge span. Roads stay the darkest, most uniform surface."""
+    z, slope = cen[:, 2], 1 - nrm[:, 2]
+    x, y = cen[:, 0], cen[:, 1]
+    n = len(z)
+    H = lambda c: np.tile(hx(c), (n, 1))
+    jit = rng.uniform(-0.55, 0.55, n)
+    f = np.clip((-(x + 400.0) + 36.0 * np.sin(y * 0.011 + 0.5) + 14.0 * np.sin(y * 0.047)) / 120.0, 0.0, 1.0)             # 0 = ice side, 1 = fire side
+    # ---------------- ice side
+    pat = (np.sin(x * 0.037 + 0.4) * np.cos(y * 0.033) + jit) > 0.05
+    ice = _mix(H("#e8f2f8"), H("#d3e6f1"), pat.astype(float))                                                              # snow
+    glac = (np.sin(x * 0.012 + 1.3) * np.cos(y * 0.010 - 0.4) + 0.5 * np.sin(x * 0.029 + y * 0.022) + 0.5 * jit) > 0.35
+    ice = np.where((glac & (slope < 0.3) & (z > 14.0))[:, None], _mix(H("#a9dcee"), H("#8fd0e6"), pat.astype(float)), ice)  # blue glacier patches
+    low = np.clip((10.0 - z) / 10.0, 0, 1)
+    ice = _mix(ice, _mix(H("#5c646c"), H("#4e565f"), pat.astype(float)), low * 0.85)                                       # wet gravel near sea level
+    harbor = (x > -470) & (x < 270) & (y > -100) & (y < 104) & (slope < 0.2)
+    tile = ((np.floor(x / 9.0).astype(int) + np.floor(y / 9.0).astype(int)) % 2 == 0)
+    ice = np.where(harbor[:, None], np.where(tile[:, None], H("#7d858f"), H("#707882")), ice)                              # concrete plates of the harbour yard
+    strata_i = [H(c) for c in ("#6d84a0", "#586e88", "#8aa0b8", "#4a5f78", "#7a90ac")]
+    band = (np.floor(z / 3.2).astype(int) + (np.floor(x * 0.011 + y * 0.009)).astype(int)) % 5
+    rock_i = strata_i[0].copy()
+    for k in range(1, 5):
+        rock_i = np.where((band == k)[:, None], strata_i[k], rock_i)
+    rock_i = rock_i * (1 - 0.16 * np.clip(slope - 0.3, 0, 1))[:, None]
+    ice = _mix(ice, rock_i, np.clip((slope - 0.24) / 0.16, 0, 1))
+    ice = _mix(ice, H("#f2f9fc"), np.clip((z - 96.0) / 40.0, 0, 1) * (slope < 0.55))                                        # bright snow on the crest
+    # ---------------- fire side
+    ash = _mix(H("#2c2a32"), H("#25232b"), pat.astype(float))
+    cinder = np.clip((np.sin(x * 0.014 - 0.4) * np.cos(y * 0.012 + 0.9) + 0.35) * 0.9, 0, 1)
+    ash = _mix(ash, H("#4a3d3c"), cinder * 0.45 * (slope < 0.2))
+    strata_f = [H(c) for c in ("#3b3641", "#2d2a35", "#4b3b39", "#25232c", "#443844")]
+    bandf = (np.floor(z / 3.0).astype(int) + (np.floor(x * 0.013 + y * 0.010)).astype(int)) % 5
+    rock_f = strata_f[0].copy()
+    for k in range(1, 5):
+        rock_f = np.where((bandf == k)[:, None], strata_f[k], rock_f)
+    fire = _mix(ash, rock_f, np.clip((slope - 0.08) / 0.14, 0, 1))
+    fis = (np.sin(x * 0.031 + 2.0 * np.sin(y * 0.017)) * np.cos(y * 0.057 + 0.3 * np.sin(x * 0.02)) + 0.35 * jit) > 0.83
+    fire = np.where((fis & (slope < 0.4))[:, None], _mix(fire, H("#b8431c"), np.full(n, 0.45)), fire)                       # ember fissures (thin streaks)
+    fire = _mix(fire, H("#1e1c24"), np.clip((slope - 0.5) / 0.25, 0, 1))                                                    # wet black faces
+    fire = _mix(fire, H("#7a6e78"), np.clip((z - 132.0) / 50.0, 0, 1) * 0.6)                                                # grey ash high up
+    col = _mix(ice, fire, f)
+    col = col * (1 - 0.35 * np.clip((-z - 1.0) / 6.0, 0, 1))[:, None]
+    col = np.where((z < -1.5)[:, None] & (y < -90.0)[:, None], _mix(H("#244f5a"), H("#1b414c"), pat.astype(float)), col)   # lagoon floor
+    return np.clip(col * (1 + rng.uniform(-0.05, 0.05, (n, 1))), 0, 1)

@@ -63,6 +63,10 @@ class World:
         self.raised = [(a.get("h", 6.0), _area_poly(a), a.get("ramp", 14.0)) for a in layout.get("areas", []) if a["kind"] in ("rocks", "hill")]
         self.cliffs = [(a.get("depth", 60.0), _area_poly(a), a.get("ramp", 24.0)) for a in layout.get("areas", []) if a["kind"] == "cliff"]
         self.plateaus = [(a.get("z", 0.0), _area_poly(a), a.get("ramp", 40.0)) for a in layout.get("areas", []) if a["kind"] == "plateau"]
+        # optional `road_ramp` per area: the area's effect fades in with the distance from the road corridor instead of starting at its edge (no vertical wall beside a road); default = old behaviour
+        self.raised_rr = [a.get("road_ramp") for a in layout.get("areas", []) if a["kind"] in ("rocks", "hill")]
+        self.cliffs_rr = [a.get("road_ramp") for a in layout.get("areas", []) if a["kind"] == "cliff"]
+        self.plateaus_rr = [a.get("road_ramp") for a in layout.get("areas", []) if a["kind"] == "plateau"]
         self.water_union = unary_union(self.water) if self.water else Polygon()
         self.land = None
         if self.style == "island":
@@ -158,20 +162,29 @@ class World:
         h = np.where(d <= shoulder, target, (1 - t) * target + t * base)
         # raised rocks / hills and water / sunken carving
         pts_s = shapely.points(P[:, 0], P[:, 1])
-        for hh, poly, ramp in self.raised:
+        for (hh, poly, ramp), rr in zip(self.raised, self.raised_rr):
             inside = shapely.contains(poly, pts_s)
             dist = shapely.distance(poly.boundary, pts_s)
             lift = hh * smoothstep(dist / ramp) * (0.85 + 0.3 * base_n2)
-            h = np.where(inside & (d > shoulder + 6.0), h + lift, h)
-        for dep, poly, ramp in self.cliffs:                                  # steep drop (cliff / abyss) outside a road shoulder
+            if rr:
+                h = np.where(inside, h + lift * smoothstep((d - shoulder - 6.0) / rr), h)
+            else:
+                h = np.where(inside & (d > shoulder + 6.0), h + lift, h)
+        for (dep, poly, ramp), rr in zip(self.cliffs, self.cliffs_rr):       # steep drop (cliff / abyss) outside a road shoulder
             inside = shapely.contains(poly, pts_s)
             dist = shapely.distance(poly.boundary, pts_s)
-            h = np.where(inside & (d > shoulder + 2.0), h - dep * smoothstep(dist / ramp), h)
-        for z0, poly, ramp in self.plateaus:                                 # levelled terrace at height z0 (forge yard, summit), blended in over `ramp` m inside the polygon; applied after the cliffs so that a terrace stays level
+            if rr:
+                h = np.where(inside, h - dep * smoothstep(dist / ramp) * smoothstep((d - shoulder - 2.0) / rr), h)
+            else:
+                h = np.where(inside & (d > shoulder + 2.0), h - dep * smoothstep(dist / ramp), h)
+        for (z0, poly, ramp), rr in zip(self.plateaus, self.plateaus_rr):    # levelled terrace at height z0 (forge yard, summit), blended in over `ramp` m inside the polygon; applied after the cliffs so that a terrace stays level
             inside = shapely.contains(poly, pts_s)
             dist = shapely.distance(poly.boundary, pts_s)
             tt = smoothstep(dist / ramp)
-            h = np.where(inside & (d > shoulder + 2.0), h * (1 - tt) + z0 * tt, h)
+            if rr:
+                h = np.where(inside, h * (1 - tt * smoothstep((d - shoulder - 2.0) / rr)) + z0 * tt * smoothstep((d - shoulder - 2.0) / rr), h)
+            else:
+                h = np.where(inside & (d > shoulder + 2.0), h * (1 - tt) + z0 * tt, h)
         for w in self.water:
             inside = shapely.contains(w, pts_s)
             dist = shapely.distance(w.boundary, pts_s)
